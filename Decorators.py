@@ -67,7 +67,6 @@ def save_result(func):
         result = func(*args, **kwargs)
         filename = f'{func.__name__}_result.{SAVE_FORMAT}'
 
-        # Sprawdź typ wyniku i dostosuj sposób zapisu do pliku
         if isinstance(result, (list, pd.DataFrame)):
             save_result_to_disk(filename, result, format=SAVE_FORMAT)
         else:
@@ -95,20 +94,16 @@ if __name__ == "__main__":
     child3 = Tree(3)
     root.children = [child1, child2, child3]
 
-    # Wykorzystaj dekorator @property
     print("Minimum value in the tree:", root.min_value)
 
-    # Pomiar czasu dla funkcji rekurencyjnej Fibonacciego
     n = 30
     print("\nMeasure time for Fibonacci Recursive:")
     measure_time(fibonacci_recursive, n)
 
-    # Pomiar czasu dla funkcji Fibonacciego z dekoratorem @lru_cache
     print("\nMeasure time for Fibonacci Cached:")
     measure_time(fibonacci_cached, n)
 
 
-    # Użyj dekoratora do zapisu wyniku do pliku (domyślnie w formacie ustawionym globalnie)
     @save_result
     def fibonacci_cached_save(n):
         return fibonacci_cached(n)
