@@ -1,11 +1,12 @@
+import os
 import timeit
 from functools import lru_cache
 import pickle
 import csv
 import pandas as pd
 
-# Zmienna globalna dla formatu zapisu
-SAVE_FORMAT = 'csv'
+# Global variable for the save format
+SAVE_FORMAT = 'excel'
 
 
 class Tree:
@@ -25,7 +26,7 @@ def fibonacci_recursive(n):
         return fibonacci_recursive(n - 1) + fibonacci_recursive(n - 2)
 
 
-@lru_cache(maxsize=None)
+@lru_cache(maxsize=12)
 def fibonacci_cached(n):
     if n <= 1:
         return n
@@ -64,14 +65,37 @@ def load_result_from_disk(filename, format='pickle'):
 
 def save_result(func):
     def wrapper(*args, **kwargs):
-        result = func(*args, **kwargs)
-        filename = f'{func.__name__}_result.{SAVE_FORMAT}'
+        filename = f'{func.__name__}_result.{"xlsx" if SAVE_FORMAT == "excel" else SAVE_FORMAT}'
 
-        # Sprawdź typ wyniku i dostosuj sposób zapisu do pliku
-        if isinstance(result, (list, pd.DataFrame)):
-            save_result_to_disk(filename, result, format=SAVE_FORMAT)
+        # Check if the file exists
+        if os.path.exists(filename):
+            # Load the result from the file
+            file_result = load_result_from_disk(filename, format=SAVE_FORMAT)
+
+            if isinstance(file_result, list):
+                file_result = file_result[0]
+
+            # Execute the function to get the current result
+            result = func(*args, **kwargs)
+
+            # Compare the results
+            if file_result == result:
+                print(f"Result already exists in '{filename}'. Loaded result: {file_result}")
+            else:
+                # Overwrite the file with the new result
+                if isinstance(result, (list, pd.DataFrame)):
+                    save_result_to_disk(filename, result, format=SAVE_FORMAT)
+                else:
+                    save_result_to_disk(filename, [result], format=SAVE_FORMAT)
+                print(f"Result saved to '{filename}'.")
         else:
-            save_result_to_disk(filename, [result], format=SAVE_FORMAT)
+            # File does not exist, save the result
+            result = func(*args, **kwargs)
+            if isinstance(result, (list, pd.DataFrame)):
+                save_result_to_disk(filename, result, format=SAVE_FORMAT)
+            else:
+                save_result_to_disk(filename, [result], format=SAVE_FORMAT)
+            print(f"Result saved to '{filename}'.")
 
         return result
 
@@ -88,35 +112,31 @@ def measure_time(func, *args, **kwargs):
 
 
 if __name__ == "__main__":
-    # Utwórz instancję drzewa
+    # Create an instance of the tree
     root = Tree(10)
     child1 = Tree(5)
     child2 = Tree(8)
     child3 = Tree(3)
     root.children = [child1, child2, child3]
 
-    # Wykorzystaj dekorator @property
     print("Minimum value in the tree:", root.min_value)
 
-    # Pomiar czasu dla funkcji rekurencyjnej Fibonacciego
-    n = 30
+    n = 16
     print("\nMeasure time for Fibonacci Recursive:")
     measure_time(fibonacci_recursive, n)
 
-    # Pomiar czasu dla funkcji Fibonacciego z dekoratorem @lru_cache
     print("\nMeasure time for Fibonacci Cached:")
     measure_time(fibonacci_cached, n)
 
 
-    # Użyj dekoratora do zapisu wyniku do pliku (domyślnie w formacie ustawionym globalnie)
     @save_result
     def fibonacci_cached_save(n):
         return fibonacci_cached(n)
 
 
-    n = 12
     print("\nMeasure time for Fibonacci Cached with Save Decorator:")
     measure_time(fibonacci_cached_save, n)
 
-    loaded_result = load_result_from_disk('fibonacci_cached_save_result.csv', format=SAVE_FORMAT)
+    loaded_result = load_result_from_disk(
+        f'fibonacci_cached_save_result.{"xlsx" if SAVE_FORMAT == "excel" else SAVE_FORMAT}', format=SAVE_FORMAT)
     print("Loaded result from disk:", loaded_result)
